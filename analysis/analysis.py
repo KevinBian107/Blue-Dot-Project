@@ -15,6 +15,12 @@ from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from ripser import ripser
+from persim import plot_diagrams
+import matplotlib.pyplot as plt
+import networkx as nx
+from sklearn.neighbors import NearestNeighbors
+
 def perform_pca_and_plot(activations, title, hue_labels):
     '''Do batch PCA plotting, helper graphing functions'''
     
@@ -276,17 +282,6 @@ def pca_lcne_lstm(model, X_tensor, df_clean):
     plt.show()
 
 
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
-from scipy.stats import pearsonr
-import pandas as pd
-import torch
-
 def analyze_ff_gadget_activations(model, X_tensor, df_clean):
     """
     Runs PCA for layer-wise activations in FFGadgetController and analyzes correlation,
@@ -387,3 +382,87 @@ def analyze_ff_gadget_activations(model, X_tensor, df_clean):
     print("\n Pearson Correlation with Actual Pupil Dilation:")
     for key, value in correlations.items():
         print(f"{key}: {value:.3f}")
+
+
+def evaluate_ff_uncertainty_gadget(model, X_test, Y_test, scaler_Y):
+    """Evaluates the FF Gadget Controller on pupil dilation prediction + uncertainty."""
+    
+    model.eval()
+    with torch.no_grad():
+        pupil_mean, pupil_var = model(X_test)
+
+        Y_pupil_actual = Y_test.cpu().numpy()
+
+        pupil_pred = pupil_mean.cpu().numpy().squeeze()
+        pupil_uncertainty = np.sqrt(pupil_var.cpu().numpy().squeeze())  # Convert variance to std dev
+
+    pupil_pred_rescaled = scaler_Y.inverse_transform(pupil_pred.reshape(-1, 1)).squeeze()
+    pupil_actual_rescaled = scaler_Y.inverse_transform(Y_pupil_actual.reshape(-1, 1)).squeeze()
+
+    # Compute Error Metrics
+    pupil_mae = np.mean(np.abs(pupil_pred_rescaled - pupil_actual_rescaled))
+    pupil_mse = np.mean((pupil_pred_rescaled - pupil_actual_rescaled) ** 2)
+
+    print(f"Pupil Dilation MAE: {pupil_mae:.4f}")
+    print(f"Pupil Dilation MSE: {pupil_mse:.4f}")
+
+    plt.figure(figsize=(8, 5))
+    plt.scatter(pupil_actual_rescaled, pupil_pred_rescaled, label="Predictions", alpha=0.6)
+    plt.fill_between(
+        pupil_actual_rescaled,
+        pupil_pred_rescaled - 2 * pupil_uncertainty,
+        pupil_pred_rescaled + 2 * pupil_uncertainty,
+        color='blue', alpha=0.2, label="±2σ Uncertainty"
+    )
+    plt.xlabel("Actual Pupil Dilation")
+    plt.ylabel("Predicted Pupil Dilation")
+    plt.title("Pupil Dilation Predictions with Uncertainty")
+    plt.legend()
+    plt.show()
+
+
+def extract_activations(model, X_tensor):
+    """Extract activations from the model."""
+    model.eval()
+    with torch.no_grad():
+        pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2 = model(X_tensor, activation=True)
+
+    activations_dict = {
+        "LC": LC_t.cpu().numpy(),
+        "NE": NE_t.cpu().numpy(),
+        "Tonic_NE": tonic_NE.cpu().numpy(),
+        "Phasic_NE": phasic_NE.cpu().numpy(),
+        "Hidden_1": hidden_1.cpu().numpy(),
+        "Hidden_2": hidden_2.cpu().numpy(),
+    }
+
+    return activations_dict
+
+def compute_persistent_homology(activation_data, title="Persistent Homology"):
+    """Computes persistent homology and plots the persistence diagram."""
+    diagrams = ripser(activation_data)['dgms']  # Compute persistence diagram
+    plot_diagrams(diagrams, show=True)
+
+def compute_mapper_graph(activation_data, n_neighbors=10, title="Mapper Graph"):
+    """Computes and visualizes a Mapper graph using K-Nearest Neighbors (KNN)."""
+    
+    # reduce dimension for visualization
+    pca = PCA(n_components=2)
+    low_dim_data = pca.fit_transform(activation_data)
+
+    # compute KNN graph
+    knn = NearestNeighbors(n_neighbors=n_neighbors).fit(low_dim_data)
+    distances, indices = knn.kneighbors(low_dim_data)
+
+    # create graph
+    G = nx.Graph()
+    for i in range(len(low_dim_data)):
+        for j in indices[i]:
+            if i != j:
+                G.add_edge(i, j, weight=distances[i, np.where(indices[i] == j)[0][0]])
+
+    # Mapper graph
+    plt.figure(figsize=(7, 6))
+    nx.draw(G, pos={i: low_dim_data[i] for i in range(len(low_dim_data))}, node_size=30, edge_color='gray')
+    plt.title(title)
+    plt.show()

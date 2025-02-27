@@ -7,7 +7,7 @@ import torch
 
 from models.ClassicModels import FeedForwardNN, RecurrentNet, LSTMModel
 from models.LCModels import LCNECortexFitter, LCNECortexLSTM
-from models.LCGadgetModels import FFGadgetController
+from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
 
 def train_feed_forward_nn(X_train, Y_train, epochs):
     '''Training feed forward neural network'''
@@ -204,3 +204,51 @@ def train_ff_controller(X_train, Y_train, epochs, hidden_dim, patience=2000):
     
     return model
 
+
+def train_ff_uncertain_controller(X_train, Y_train, epochs, hidden_dim, patience=2000):
+    """Train the FF Controller model with LC-NE gadget for pupil dilation + uncertainty."""
+    
+    input_dim = X_train.shape[1]
+    batch_size = min(32, X_train.shape[0])
+    model = FFGadgetUncertainController(input_dim, hidden_dim)
+
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
+
+    loss_fn = nn.SmoothL1Loss()
+    
+    best_loss = float('inf')
+    patience_counter = 0
+
+    for epoch in range(epochs):
+        model.train()
+        optimizer.zero_grad()
+
+        idx = torch.randint(0, X_train.shape[0], (batch_size,))
+        X_batch = X_train[idx]
+        Y_pupil_batch = Y_train[idx].unsqueeze(1)
+
+        pupil_mean, pupil_var = model(X_batch)
+
+        loss = loss_fn(pupil_mean, Y_pupil_batch)
+
+        loss.backward()
+        optimizer.step()
+        scheduler.step(loss)  
+
+        if loss.item() < best_loss:
+            best_loss = loss.item()
+            patience_counter = 0
+        else:
+            patience_counter += 1
+
+        if epoch % 100 == 0:
+            print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
+
+        if patience_counter >= patience:
+            print(f"Early stopping triggered at epoch {epoch}")
+            break
+
+    print("Training complete!")
+    
+    return model

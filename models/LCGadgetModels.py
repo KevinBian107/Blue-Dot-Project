@@ -83,6 +83,44 @@ class FFGadgetController(nn.Module):
 
         return output, LC_t, NE_t, tonic_NE, phasic_NE
 
+class FFGadgetUncertainController(nn.Module):
+    """FF network learns to control LC-NE system for pupil dilation + uncertainty."""
+    
+    def __init__(self, input_dim, hidden_dim):
+        super(FFGadgetUncertainController, self).__init__()
+        self.hidden_dim = hidden_dim
+
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+
+        self.lcne_gadget = LCNEGadget(hidden_dim) 
+
+        self.modulation_fc = nn.Linear(hidden_dim * 2, hidden_dim)  # tonic & phasic NE
+
+        # Pupil Dilation Output + Uncertainty
+        self.Pupil_mean = nn.Linear(hidden_dim, 1)  # Pupil Dilation Prediction
+        self.Pupil_std = nn.Linear(hidden_dim, 1)   # Uncertainty for Pupil Dilation (std dev)
+
+    def forward(self, x, activation=False):
+        """Processes input and learns to utilize neuromodulation"""
+        hidden_1 = torch.relu(self.fc1(x))
+        hidden_2 = torch.relu(self.fc2(hidden_1))
+
+        # neuromodulatory signals
+        LC_t, NE_t, tonic_NE, phasic_NE = self.lcne_gadget(hidden_2)
+
+        # FFN Learns How to Use Neuromodulation
+        modulated_input = torch.cat([hidden_2, NE_t], dim=1)
+        modulated_hidden = torch.relu(self.modulation_fc(modulated_input))
+
+        pupil_mean = self.Pupil_mean(modulated_hidden)
+        pupil_std = torch.exp(self.Pupil_std(modulated_hidden))  # Ensure std is positive
+
+        if activation:
+            return pupil_mean, pupil_std, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2
+
+        return pupil_mean, pupil_std
+    
 
 class MemoryLCGadget(nn.Module):
     """Self-learned LC-NE system with integrated short-term memory."""
