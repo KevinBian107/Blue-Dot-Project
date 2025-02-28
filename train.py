@@ -218,13 +218,15 @@ def train_ff_controller(X_train, Y_train, epochs, hidden_dim, patience=2000):
     return model
 
 
-def train_ff_uncertain_controller(X_train, Y_train, epochs, hidden_dim, patience=200, batch_size=32):
+def train_ff_uncertain_controller(X_train, Y_train, epochs, hidden_dim, patience=200, batch_size=32, entropy_scale=0.1):
     """Train the FF Controller model with LC-NE gadget for pupil dilation + uncertainty."""
     
-    def aleatoric_loss(y_pred, y_true, exp_var):
+    def aleatoric_loss(entropy_scale):
         """Aleatoric uncertainty loss (adaptive uncertainty modeling)."""
-        
-        loss = torch.mean(torch.exp(-exp_var) * (y_pred - y_true) ** 2 + exp_var)
+        def loss(y_pred, y_true, exp_var):
+            loss = torch.mean(torch.exp(-exp_var) * (y_pred - y_true) ** 2 + exp_var)
+            entropy_penalty = torch.mean(exp_var)  # Encourages higher variance predictions
+            return loss - entropy_scale * entropy_penalty  # Scaling factor
         return loss
     
     input_dim = X_train.shape[1]
@@ -236,7 +238,7 @@ def train_ff_uncertain_controller(X_train, Y_train, epochs, hidden_dim, patience
 
     # loss_fn = nn.SmoothL1Loss()
     # loss_fn = nn.GaussianNLLLoss()
-    loss_fn = aleatoric_loss
+    loss_fn = aleatoric_loss(entropy_scale=entropy_scale)
     
     best_loss = float('inf')
     patience_counter = 0

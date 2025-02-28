@@ -475,3 +475,70 @@ def compute_mapper_graph(activation_data, n_neighbors=10, title="Mapper Graph"):
     nx.draw(G, pos={i: low_dim_data[i] for i in range(len(low_dim_data))}, node_size=30, edge_color='gray')
     plt.title(title)
     plt.show()
+    
+
+def analyze_uncertainty_relationships(model, X_test):
+    """
+    Extracts LC-NE activations, pupil dilation predictions, and uncertainty.
+    Then, analyzes how LC activation, tonic NE, and phasic NE correlate with uncertainty.
+    """
+
+    # Step 1: Extract signals from the model
+    model.eval()
+    with torch.no_grad():
+        pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, _, _ = model(X_test, activation=True)
+
+    # Convert to NumPy for easier handling
+    pupil_mean = pupil_mean.cpu().numpy()
+    pupil_var = pupil_var.cpu().numpy()
+    LC_t = LC_t.cpu().numpy()
+    NE_t = NE_t.cpu().numpy()
+    tonic_NE = tonic_NE.cpu().numpy()
+    phasic_NE = phasic_NE.cpu().numpy()
+
+    # Step 2: Plot LC Activation vs. Uncertainty
+    plt.figure(figsize=(8, 5))
+    sns.scatterplot(x=LC_t.mean(axis=1), y=pupil_var.squeeze(), alpha=0.5)
+    plt.xlabel("Mean LC Activation")
+    plt.ylabel("Predicted Uncertainty (Pupil Variance)")
+    plt.title("LC Activation vs. Predicted Uncertainty")
+    plt.show()
+
+    # Step 3: Compare Tonic vs. Phasic NE with Uncertainty
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+    sns.scatterplot(x=tonic_NE.mean(axis=1), y=pupil_var.squeeze(), alpha=0.5, ax=ax[0])
+    ax[0].set_xlabel("Tonic NE Activation")
+    ax[0].set_ylabel("Predicted Uncertainty")
+    ax[0].set_title("Tonic NE vs. Uncertainty")
+
+    sns.scatterplot(x=phasic_NE.mean(axis=1), y=pupil_var.squeeze(), alpha=0.5, ax=ax[1])
+    ax[1].set_xlabel("Phasic NE Activation")
+    ax[1].set_ylabel("Predicted Uncertainty")
+    ax[1].set_title("Phasic NE vs. Uncertainty")
+
+    plt.tight_layout()
+    plt.show()
+
+    # Step 4: Compute Pearson correlations
+    results = {
+        "LC vs. Uncertainty": pearsonr(LC_t.mean(axis=1), pupil_var.squeeze())[0],
+        "Tonic NE vs. Uncertainty": pearsonr(tonic_NE.mean(axis=1), pupil_var.squeeze())[0],
+        "Phasic NE vs. Uncertainty": pearsonr(phasic_NE.mean(axis=1), pupil_var.squeeze())[0],
+        "NE vs. Uncertainty": pearsonr(NE_t.mean(axis=1), pupil_var.squeeze())[0],
+    }
+    
+    print("\n📊 **Correlation Results:**")
+    for key, value in results.items():
+        print(f"{key}: {value:.4f}")
+
+    return results
+
+def simulate_lc_activation(model, X_test, lc_boost=1.0):
+    """Artificially boost or suppress LC activation and analyze effects on uncertainty."""
+    model.eval()
+    with torch.no_grad():
+        pupil_high, var_high = model(X_test + lc_boost)  # High LC activation
+        pupil_low, var_low = model(X_test - lc_boost)  # Low LC activation
+
+    return pupil_high.cpu().numpy(), var_high.cpu().numpy(), pupil_low.cpu().numpy(), var_low.cpu().numpy()

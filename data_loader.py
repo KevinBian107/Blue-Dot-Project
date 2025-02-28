@@ -67,6 +67,8 @@ def preprocess_data(df_behavior):
     target = ['Event_PupilDilation']
 
     df_clean = df_behavior[features + target].dropna().reset_index(drop=True)
+    
+    # df_clean = df_clean[df_clean['Condition'] == 'NEUTRAL']
 
     encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
     encoded_features = encoder.fit_transform(df_clean[['Condition', 'TrialEvent']])

@@ -96,6 +96,8 @@ class FFGadgetUncertainController(nn.Module):
         self.lcne_gadget = LCNEGadget(hidden_dim) 
 
         self.modulation_fc = nn.Linear(hidden_dim * 2, hidden_dim)  # tonic & phasic NE
+        
+        self.uncertainty_scale = nn.Parameter(torch.tensor(1.0))  
 
         # Pupil Dilation Output + Uncertainty
         self.Pupil_mean = nn.Linear(hidden_dim, 1)  # Pupil Dilation Prediction
@@ -115,7 +117,7 @@ class FFGadgetUncertainController(nn.Module):
 
         pupil_mean = self.Pupil_mean(modulated_hidden)
         # pupil_var = torch.exp(torch.clamp(self.Pupil_var(modulated_hidden) + torch.randn_like(self.Pupil_var(modulated_hidden)) * 0.1, min=-5, max=2))
-        pupil_var = torch.exp(self.Pupil_var(modulated_hidden))
+        pupil_var = torch.exp(self.Pupil_var(modulated_hidden) * self.uncertainty_scale)
 
 
         if activation:
