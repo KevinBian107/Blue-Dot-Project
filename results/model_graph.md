@@ -1,3 +1,5 @@
+The following is our `feed forward gadget model with uncertainty reasoning`:
+
 ```mermaid
 graph TD;
     %% FF Gadget Controller
@@ -14,8 +16,8 @@ graph TD;
     LC2 --> Phasic["Phasic Control (Tanh) * Gain → Phasic NE"];
     Phasic --> Suppression["Suppression Factor (Sigmoid) * Phasic NE"];
 
-    Tonic --> Blend
-    Suppression --> Blend
+    Tonic --> Blend;
+    Suppression --> Blend;
     Gate --> Blend["Blending: Tonic NE + Phasic NE"];
     Blend --> NE_t["Final NE_t"];
     
@@ -24,4 +26,8 @@ graph TD;
     C --> H;
     
     H --> Modulation["modulation_fc → Modulated Hidden (ReLU)"];
-    Modulation --> Output["output_layer → Final Output"];
+    Modulation --> Mean["Pupil_mean (Linear) → Pupil Dilation Prediction"];
+    Modulation --> Var["Pupil_var (Exp(Linear)) → Pupil Dilation Uncertainty"];
+
+    Mean --> Output["Final Pupil Dilation Output"];
+    Var --> Output;
