@@ -2,7 +2,6 @@
 Thi is a study into Locus Coeruleus Norepinephrine System and Security Motivation System rumination pathology pathway using computational methods. To this end, we are creating a Locus Coeruleus rumination system in which we call it as the **B**lue **D**ot (LC in greek means little blue dot) **P**roject (BDP).
 
 - [Meeting docs](https://docs.google.com/document/d/1740GxJ5xmIjUbWH8_RjYnuI5KNnZwGkvKQaM6hEzCLc/edit?tab=t.0#heading=h.e9mhf81r5r4b)
-- [Computation formulation](https://www.overleaf.com/project/67a703b870287a1af3db3532)
 - [Pitch presentation model proposition section (hosted in UCSD Podemos)](https://www.youtube.com/watch?v=KdRzyWItoa0)
 
 ## Three Data Driven Models:
