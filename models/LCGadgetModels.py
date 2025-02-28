@@ -99,7 +99,7 @@ class FFGadgetUncertainController(nn.Module):
 
         # Pupil Dilation Output + Uncertainty
         self.Pupil_mean = nn.Linear(hidden_dim, 1)  # Pupil Dilation Prediction
-        self.Pupil_std = nn.Linear(hidden_dim, 1)   # Uncertainty for Pupil Dilation (std dev)
+        self.Pupil_var = nn.Linear(hidden_dim, 1)   # Uncertainty for Pupil Dilation (std dev)
 
     def forward(self, x, activation=False):
         """Processes input and learns to utilize neuromodulation"""
@@ -114,12 +114,14 @@ class FFGadgetUncertainController(nn.Module):
         modulated_hidden = torch.relu(self.modulation_fc(modulated_input))
 
         pupil_mean = self.Pupil_mean(modulated_hidden)
-        pupil_std = torch.exp(self.Pupil_std(modulated_hidden))  # Ensure std is positive
+        # pupil_var = torch.exp(torch.clamp(self.Pupil_var(modulated_hidden) + torch.randn_like(self.Pupil_var(modulated_hidden)) * 0.1, min=-5, max=2))
+        pupil_var = torch.exp(self.Pupil_var(modulated_hidden))
+
 
         if activation:
-            return pupil_mean, pupil_std, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2
+            return pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2
 
-        return pupil_mean, pupil_std
+        return pupil_mean, pupil_var
     
 
 class MemoryLCGadget(nn.Module):

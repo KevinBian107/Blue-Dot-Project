@@ -24,9 +24,37 @@ At last, we can use this fitteed model to prompt them under certain `experimenta
 ## Preliminary Results:
 We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created [model structure](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/model_pipeline.md) for showcase our pipeline.
 
-| FF Gadget Model Activation Networks|
-|--------------|
-| ![img](results/gadget_results.png)|
+| FF Gadget Model Activation Homology | FF Gadget Model Activation Networks|
+|--------------|--------------|
+| ![img](results/gadget_homology.png)| ![img](results/gadget_network.png)|
+
+
+- **𝐻₀ (Blue Dots)** → Represents connected components (clusters in LC activation).
+- **𝐻₁ (Orange Dots)** → Represents loops (1D holes in the data, cyclic structures in LC activation).
+- **Diagonal Line** → Features close to the diagonal are short-lived (noise).
+- **Dashed Line (∞)** → Features that never die represent persistent structures in the data.
+
+> 1️⃣ **𝐻₀ (Blue Dots) → Connected Components (Stable Thought States)**
+- Represents distinct activation states of LC.
+- Few long-lived components → Suggests stable attractor states in LC activation, possibly corresponding to persistent thought patterns.
+- Many short-lived components → Indicates a highly dynamic LC state, suggesting flexible thought processes rather than being stuck in loops.
+
+> **Key**: connected components indicates thoughts.
+
+Rumination:
+- If **𝐻₀ features persist (far from diagonal)**, this could indicate LC stabilization, linked to difficulty in shifting thoughts (rumination).
+- If **𝐻₀ features quickly disappear**, LC activity may dynamically support cognitive flexibility, allowing for thought transitions.
+
+> 2️⃣ **𝐻₁ (Orange Dots) → Cycles in LC Activity (Recursive Thoughts)**
+- Represents loops in activation patterns, indicating recurrent or cyclic thought processes.
+- Few short-lived loops → Suggests transient, non-repetitive activity.
+- Many persistent loops → Could indicate self-reinforcing thought cycles, similar to recursive thinking in rumination.
+
+Rumination:
+- Persistent loops (far from diagonal) may correspond to sustained LC activity patterns, reinforcing self-referential thought loops seen in rumination.
+- Short-lived loops (near diagonal) suggest transient fluctuations in LC activity, possibly linked to shifts in attention or task engagement.
+
+> **Key**: connected components indicates close/open loops of thoughts.
 
 ## Reference Literatures
 Data Source:

@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from sklearn.neighbors import NearestNeighbors
 
+from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
+
 def perform_pca_and_plot(activations, title, hue_labels):
     '''Do batch PCA plotting, helper graphing functions'''
     
@@ -421,12 +423,17 @@ def evaluate_ff_uncertainty_gadget(model, X_test, Y_test, scaler_Y):
     plt.show()
 
 
-def extract_activations(model, X_tensor):
+def extract_activations_gadget(model, X_tensor):
     """Extract activations from the model."""
     model.eval()
     with torch.no_grad():
-        pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2 = model(X_tensor, activation=True)
-
+        if isinstance(model, FFGadgetUncertainController):
+            pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2 = model(X_tensor, activation=True)
+        elif isinstance(model, FFGadgetController):
+            pupil_mean, LC_t, NE_t, tonic_NE, phasic_NE, hidden_1, hidden_2 = model(X_tensor, activation=True)
+        else:
+            raise ValueError(f"Unsupported model type: {model}")
+        
     activations_dict = {
         "LC": LC_t.cpu().numpy(),
         "NE": NE_t.cpu().numpy(),
@@ -438,10 +445,12 @@ def extract_activations(model, X_tensor):
 
     return activations_dict
 
+
 def compute_persistent_homology(activation_data, title="Persistent Homology"):
     """Computes persistent homology and plots the persistence diagram."""
     diagrams = ripser(activation_data)['dgms']  # Compute persistence diagram
     plot_diagrams(diagrams, show=True)
+
 
 def compute_mapper_graph(activation_data, n_neighbors=10, title="Mapper Graph"):
     """Computes and visualizes a Mapper graph using K-Nearest Neighbors (KNN)."""
