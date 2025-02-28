@@ -9,7 +9,7 @@ import seaborn as sns
 
 from models.ClassicModels import FeedForwardNN, RecurrentNet, LSTMModel
 from models.LCModels import LCNECortexFitter, LCNECortexLSTM
-from models.LCGadgetModels import FFGadgetController
+from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
 
 from scipy.stats import pearsonr
 
@@ -63,7 +63,7 @@ def evaluate_model(model, X_test, Y_test, df_clean, scaler_Y=None):
             Y_pred = scaler_Y.inverse_transform(Y_pred).reshape(-1, 1)
 
     # ---- LCNECortex Variants ---- #
-    elif isinstance(model, (LCNECortexLSTM, LCNECortexFitter, FFGadgetController)):
+    elif isinstance(model, (LCNECortexLSTM, LCNECortexFitter, FFGadgetController, FFGadgetUncertainController)):
         prev_LC = torch.zeros(batch_size, model.hidden_dim)
         prev_Cortex = torch.zeros(batch_size, model.hidden_dim)
         cell_state = torch.zeros(batch_size, model.hidden_dim)
@@ -75,6 +75,9 @@ def evaluate_model(model, X_test, Y_test, df_clean, scaler_Y=None):
             
             elif isinstance(model, FFGadgetController):
                 Pupil_pred, _, _, _, _ = model(X_test)
+            
+            elif isinstance(model, FFGadgetUncertainController):
+                Pupil_pred, _ = model(X_test)
             
             elif isinstance(model, LCNECortexFitter):
                 _, _, _, Pupil_pred = model(X_test, prev_LC, prev_Cortex)
