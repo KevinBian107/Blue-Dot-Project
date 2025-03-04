@@ -475,6 +475,78 @@ def compute_mapper_graph(activation_data, n_neighbors=10, title="Mapper Graph"):
     nx.draw(G, pos={i: low_dim_data[i] for i in range(len(low_dim_data))}, node_size=30, edge_color='gray')
     plt.title(title)
     plt.show()
+
+
+
+def compute_persistent_homology_overlay(act_neutral, act_stress, title="Persistent Homology Overlay"):
+    """Computes and overlays persistent homology for neutral vs. stressful activations using Ripser."""
+    
+    diagrams_neutral = ripser(act_neutral)['dgms']
+    diagrams_stress = ripser(act_stress)['dgms']
+
+    # Colors and markers for different homology dimensions
+    homology_styles = {
+        0: {"color": "blue", "marker": "o", "label": r"$H_0$ (Neutral)", "label_stress": r"$H_0$ (Stressful)"},
+        1: {"color": "pink", "marker": "s", "label": r"$H_1$ (Neutral)", "label_stress": r"$H_1$ (Stressful)"},
+        2: {"color": "green", "marker": "D", "label": r"$H_2$ (Neutral)", "label_stress": r"$H_2$ (Stressful)"},
+    }
+
+    plt.figure(figsize=(6, 6))
+
+    # Iterate over dimensions and plot
+    for dim in range(len(diagrams_neutral)):
+        if dim in homology_styles:
+            style = homology_styles[dim]
+            if len(diagrams_neutral[dim]) > 0:
+                plt.scatter(diagrams_neutral[dim][:, 0], diagrams_neutral[dim][:, 1], 
+                            c=style["color"], marker=style["marker"], label=style["label"])
+            if len(diagrams_stress[dim]) > 0:
+                plt.scatter(diagrams_stress[dim][:, 0], diagrams_stress[dim][:, 1], 
+                            c=style["color"], marker=style["marker"], edgecolors="black", label=style["label_stress"])
+
+    # Diagonal reference line
+    plt.plot([0, 2], [0, 2], "k--", alpha=0.5)  
+
+    plt.xlabel("Birth")
+    plt.ylabel("Death")
+    plt.title(title)
+    plt.legend()
+    plt.show()
+
+
+
+def compute_mapper_graph_overlay(act_neutral, act_stress, n_neighbors=10, title="Mapper Graph Overlay"):
+    """Computes and overlays Mapper Graphs for neutral vs. stressful activations using KNN."""
+    
+    pca = PCA(n_components=2)
+    low_dim_neutral = pca.fit_transform(act_neutral)
+    low_dim_stress = pca.fit_transform(act_stress)
+
+    knn_neutral = NearestNeighbors(n_neighbors=n_neighbors).fit(low_dim_neutral)
+    knn_stress = NearestNeighbors(n_neighbors=n_neighbors).fit(low_dim_stress)
+
+    distances_neutral, indices_neutral = knn_neutral.kneighbors(low_dim_neutral)
+    distances_stress, indices_stress = knn_stress.kneighbors(low_dim_stress)
+
+    G_neutral = nx.Graph()
+    for i in range(len(low_dim_neutral)):
+        for j in indices_neutral[i]:
+            if i != j:
+                G_neutral.add_edge(i, j, weight=distances_neutral[i, np.where(indices_neutral[i] == j)[0][0]])
+
+    G_stress = nx.Graph()
+    for i in range(len(low_dim_stress)):
+        for j in indices_stress[i]:
+            if i != j:
+                G_stress.add_edge(i, j, weight=distances_stress[i, np.where(indices_stress[i] == j)[0][0]])
+
+    plt.figure(figsize=(7, 6))
+    nx.draw(G_neutral, pos={i: low_dim_neutral[i] for i in range(len(low_dim_neutral))}, node_size=30, edge_color='blue', alpha=0.6, label="Neutral")
+    nx.draw(G_stress, pos={i: low_dim_stress[i] for i in range(len(low_dim_stress))}, node_size=30, edge_color='pink', alpha=0.6, label="Stressful")
+
+    plt.title(title)
+    plt.legend(["Neutral", "Stressful"])
+    plt.show()
     
 
 def analyze_uncertainty_relationships(model, X_test):

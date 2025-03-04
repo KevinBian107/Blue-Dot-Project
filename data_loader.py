@@ -99,54 +99,37 @@ def preprocess_data(df_behavior):
     return X, Y, X_tensor, Y_tensor, scaler_X, scaler_Y, df_clean
 
 
-# def preprocess_data_multihead(df_behavior):
-#     '''Preprocess behavioral data for FF Controller with multi-class memory strength.'''
+def preprocess_data_stress(df_behavior, encoder=None, scaler_X=None, condition="AROUSING"):
+    '''Preprocess behavioral data for stress condition while keeping feature dimensions consistent.'''
     
-#     # Features: Categorical + Continuous
-#     categorical_features = ['Condition', 'TrialEvent']
-#     continuous_features = ['PreEvent_PupilMax', 'onset', 'duration']
+    features = ['Condition', 'PreEvent_PupilMax', 'TrialEvent', 'onset', 'duration']
+    target = ['Event_PupilDilation']
+
+    df_clean_all = df_behavior[features + target].dropna().reset_index(drop=True)
+
+    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+    encoder.fit(df_clean_all[['Condition', 'TrialEvent']])  # Fit on all conditions
+    encoded_feature_names = encoder.get_feature_names_out(['Condition', 'TrialEvent'])
+
+    scaler_X = StandardScaler()
+    scaler_X.fit(df_clean_all[['PreEvent_PupilMax', 'onset', 'duration']])
+
+    # filter only stressful data (Ensures no feature dimension mismatch)
+    if condition == "AROUSING":
+        df_clean_stress = df_clean_all[df_clean_all['Condition'] == 'AROUSING']
+    elif condition == "NEUTRAL":
+        df_clean_stress = df_clean_all[df_clean_all['Condition'] == 'NEUTRAL']
+
+    scaled_features = scaler_X.transform(df_clean_stress[['PreEvent_PupilMax', 'onset', 'duration']])
+    X_scaled = pd.DataFrame(scaled_features, columns=['PreEvent_PupilMax', 'onset', 'duration'])
+
+    encoded_stressful = encoder.transform(df_clean_stress[['Condition', 'TrialEvent']])
+    X_encoded = pd.DataFrame(encoded_stressful, columns=encoded_feature_names)
+
+    X_scaled.reset_index(drop=True, inplace=True)
+    X_encoded.reset_index(drop=True, inplace=True)
+    X = pd.concat([X_scaled, X_encoded], axis=1)
+
+    X_tensor = torch.tensor(X.values, dtype=torch.float32)
     
-#     # Targets: Continuous (Pupil Dilation) & Categorical (Memory Strength)
-#     target_continuous = ['Event_PupilDilation']
-#     target_categorical = ['MemoryStrength']  # Multi-class classification
-
-#     # Drop NaNs
-#     df_clean = df_behavior[categorical_features + continuous_features + target_continuous + target_categorical].dropna().reset_index(drop=True)
-
-#     # --- One-Hot Encoding for Categorical Features ---
-#     encoder_features = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-#     encoded_features = encoder_features.fit_transform(df_clean[categorical_features])
-#     encoded_feature_names = encoder_features.get_feature_names_out(categorical_features)
-
-#     # --- One-Hot Encoding for Memory Strength (Multi-Class) ---
-#     encoder_memory = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-#     encoded_memory = encoder_memory.fit_transform(df_clean[target_categorical])
-#     encoded_memory_names = encoder_memory.get_feature_names_out(target_categorical)
-
-#     # --- Standard Scaling for Continuous Features ---
-#     scaler_X = StandardScaler()
-#     scaled_features = scaler_X.fit_transform(df_clean[continuous_features])
-
-#     # --- Prepare Feature DataFrame ---
-#     X_scaled = pd.DataFrame(scaled_features, columns=continuous_features)
-#     X_encoded = pd.DataFrame(encoded_features, columns=encoded_feature_names)
-
-#     X_scaled.reset_index(drop=True, inplace=True)
-#     X_encoded.reset_index(drop=True, inplace=True)
-#     X = pd.concat([X_scaled, X_encoded], axis=1)
-
-#     # --- Scaling Continuous Targets ---
-#     scaler_Y = MinMaxScaler(feature_range=(-1, 1))  # Normalize within [-1,1]
-#     Y_cont = scaler_Y.fit_transform(df_clean[target_continuous])
-
-#     # --- Convert Memory Strength (Multi-Class) to Tensor ---
-#     Y_categorical = pd.DataFrame(encoded_memory, columns=encoded_memory_names)
-
-#     # --- Convert to Tensors ---
-#     X_tensor = torch.tensor(X.values, dtype=torch.float32)
-#     Y_tensor = torch.tensor(np.hstack((Y_cont, Y_categorical)), dtype=torch.float32)  # Stack continuous + categorical
-
-#     print(f"X Shape: {X_tensor.shape}, Y Shape: {Y_tensor.shape}")
-#     print(f"Y Continuous Min: {Y_tensor[:, 0].min().item()}, Max: {Y_tensor[:, 0].max().item()}")  # Check Scaling
-
-#     return X, Y_cont, X_tensor, Y_tensor, scaler_X, scaler_Y, df_clean
+    return X_tensor

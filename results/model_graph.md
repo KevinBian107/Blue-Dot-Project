@@ -1,7 +1,7 @@
 The following is our `feed forward gadget model with uncertainty reasoning`:
 
 ```mermaid
-graph LR;
+graph TD;
     
     %% Inputs
     A["Input x"] -->|ReLU| B["NN Hidden State"];
