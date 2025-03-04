@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
+import umap
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -20,6 +21,8 @@ from persim import plot_diagrams
 import matplotlib.pyplot as plt
 import networkx as nx
 from sklearn.neighbors import NearestNeighbors
+import networkx as nx
+from sklearn.metrics.pairwise import cosine_similarity
 
 from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
 
@@ -514,7 +517,6 @@ def compute_persistent_homology_overlay(act_neutral, act_stress, title="Persiste
     plt.show()
 
 
-
 def compute_mapper_graph_overlay(act_neutral, act_stress, n_neighbors=10, title="Mapper Graph Overlay"):
     """Computes and overlays Mapper Graphs for neutral vs. stressful activations using KNN."""
     
@@ -547,8 +549,60 @@ def compute_mapper_graph_overlay(act_neutral, act_stress, n_neighbors=10, title=
     plt.title(title)
     plt.legend(["Neutral", "Stressful"])
     plt.show()
-    
 
+
+def plot_manifold_projection(activations, labels, method="tsne"):
+    """Visualizes activation embeddings using t-SNE or UMAP."""
+    
+    if method == "tsne":
+        reducer = TSNE(n_components=2, perplexity=30, random_state=42)
+    elif method == "umap":
+        reducer = umap.UMAP(n_components=2, random_state=42)
+    else:
+        raise ValueError("Method should be 'tsne' or 'umap'")
+
+    embeddings = reducer.fit_transform(activations)
+    
+    plt.figure(figsize=(7, 6))
+    sns.scatterplot(x=embeddings[:, 0], y=embeddings[:, 1], hue=labels, palette="flare", alpha=0.7)
+    plt.title(f"{method.upper()} Projection of Activations")
+    plt.xlabel("Component 1")
+    plt.ylabel("Component 2")
+    plt.show()
+
+
+def construct_activation_graph(activations, threshold=0.7):
+    """Constructs a graph where nodes are activations and edges are high-correlation pairs."""
+    
+    # similarity matrix
+    similarity_matrix = cosine_similarity(activations)
+
+    # create a graph
+    G = nx.Graph()
+    num_nodes = similarity_matrix.shape[0]
+
+    # add nodes
+    for i in range(num_nodes):
+        G.add_node(i)
+
+    # add edges based on threshold
+    for i in range(num_nodes):
+        for j in range(i + 1, num_nodes):
+            if similarity_matrix[i, j] > threshold:
+                G.add_edge(i, j, weight=similarity_matrix[i, j])
+
+    return G
+
+
+def plot_activation_graph(G, title="Activation Graph"):
+    """Plots a simple network graph of activations."""
+    plt.figure(figsize=(8, 6))
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=False, node_size=50, edge_color="gray", alpha=0.7)
+    plt.title(title)
+    plt.show()
+
+    
 def analyze_uncertainty_relationships(model, X_test):
     """
     Extracts LC-NE activations, pupil dilation predictions, and uncertainty.

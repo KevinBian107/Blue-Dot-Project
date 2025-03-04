@@ -133,3 +133,39 @@ def preprocess_data_stress(df_behavior, encoder=None, scaler_X=None, condition="
     X_tensor = torch.tensor(X.values, dtype=torch.float32)
     
     return X_tensor
+
+
+def preprocess_data_duration(df_behavior, encoder=None, scaler_X=None, duration='short'):
+    '''Preprocess behavioral data for stress condition while keeping feature dimensions consistent.'''
+    
+    features = ['Condition', 'PreEvent_PupilMax', 'TrialEvent', 'onset', 'duration']
+    target = ['Event_PupilDilation']
+
+    df_clean_all = df_behavior[features + target].dropna().reset_index(drop=True)
+
+    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+    encoder.fit(df_clean_all[['Condition', 'TrialEvent']])  # Fit on all conditions
+    encoded_feature_names = encoder.get_feature_names_out(['Condition', 'TrialEvent'])
+
+    scaler_X = StandardScaler()
+    scaler_X.fit(df_clean_all[['PreEvent_PupilMax', 'onset', 'duration']])
+
+    # filter only stressful data (Ensures no feature dimension mismatch)
+    if duration == 'short':
+        df_clean_stress = df_clean_all[df_clean_all['duration'] == 1.0]
+    elif duration == "long":
+        df_clean_stress = df_clean_all[df_clean_all['duration'] == 2.5]
+
+    scaled_features = scaler_X.transform(df_clean_stress[['PreEvent_PupilMax', 'onset', 'duration']])
+    X_scaled = pd.DataFrame(scaled_features, columns=['PreEvent_PupilMax', 'onset', 'duration'])
+
+    encoded_stressful = encoder.transform(df_clean_stress[['Condition', 'TrialEvent']])
+    X_encoded = pd.DataFrame(encoded_stressful, columns=encoded_feature_names)
+
+    X_scaled.reset_index(drop=True, inplace=True)
+    X_encoded.reset_index(drop=True, inplace=True)
+    X = pd.concat([X_scaled, X_encoded], axis=1)
+
+    X_tensor = torch.tensor(X.values, dtype=torch.float32)
+    
+    return X_tensor
