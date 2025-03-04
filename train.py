@@ -7,7 +7,7 @@ import torch
 
 import matplotlib.pyplot as plt
 
-from models.ClassicModels import FeedForwardNN, RecurrentNet, LSTMModel
+from models.ClassicModels import FeedForwardNN, LSTMModel
 from models.LCModels import LCNECortexFitter, LCNECortexLSTM
 from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
 
@@ -38,33 +38,6 @@ def train_feed_forward_nn(X_train, Y_train, epochs):
 
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {loss.item()}")
-    
-    print("Training complete!")
-    
-    return model
-
-def train_vanilla_rnn(X_train, Y_train, epochs):
-    '''Training vanilla RNN'''
-    # Convert input data into sequences
-    
-    X_rnn = X_train.unsqueeze(1) 
-    Y_rnn = Y_train.unsqueeze(1) 
-
-    print(f"X_rnn Shape: {X_rnn.shape}, Y_rnn Shape: {Y_rnn.shape}")
-
-    model = RecurrentNet(input_size=X_rnn.shape[2])
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = nn.MSELoss()
-
-    for epoch in range(epochs):
-        optimizer.zero_grad()
-        Y_pred = model(X_rnn)
-        loss = loss_fn(Y_pred, Y_rnn)
-        loss.backward()
-        optimizer.step()
-
-        if epoch % 100 == 0:
-            print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
     
     print("Training complete!")
     

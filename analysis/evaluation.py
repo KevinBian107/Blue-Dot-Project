@@ -7,7 +7,7 @@ from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from models.ClassicModels import FeedForwardNN, RecurrentNet, LSTMModel
+from models.ClassicModels import FeedForwardNN, LSTMModel
 from models.LCModels import LCNECortexFitter, LCNECortexLSTM
 from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
 
@@ -47,14 +47,11 @@ def evaluate_model(model, X_test, Y_test, df_clean, scaler_Y=None):
             Y_test_actual = scaler_Y.inverse_transform(Y_test_actual)
 
     # ---- RECURRENT NN ---- #
-    elif isinstance(model, (RecurrentNet, LSTMModel)):
-        X_rnn = X_test.unsqueeze(1) 
+    elif isinstance(model, (LSTMModel)):
         
         with torch.no_grad():
-            if isinstance(model, RecurrentNet):
-                Y_pred = model(X_rnn).cpu().numpy()
                 
-            elif isinstance(model, LSTMModel):
+            if isinstance(model, LSTMModel):
                 if len(X_test.shape) == 2:
                     X_test = X_test.unsqueeze(1)  # Ensure it has (batch_size, seq_length, input_dim)
                 Y_pred, _, _ = model(X_test)

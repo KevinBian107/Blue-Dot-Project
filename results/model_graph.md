@@ -1,33 +1,40 @@
 The following is our `feed forward gadget model with uncertainty reasoning`:
 
 ```mermaid
-graph TD;
-    %% FF Gadget Controller
-    A["Input x"] --> B["Hidden 1 (ReLU)"];
-    B --> C["Hidden 2 (ReLU)"];
+graph LR;
     
-    C --> LC_Input["Pass to LCNEGadget"];
+    %% Inputs
+    A["Input x"] -->|ReLU| B["NN Hidden State"];
     
-    %% LCNEGadget System
-    LC_Input --> LC1["W_LC1 (Tanh) → Intermediate LC"];
-    LC1 --> LC2["W_LC2 (Tanh) → LC_t"];
-    
-    LC2 --> Tonic["Tonic Control (Tanh) * Gain → Tonic NE"];
-    LC2 --> Phasic["Phasic Control (Tanh) * Gain → Phasic NE"];
-    Phasic --> Suppression["Suppression Factor (Sigmoid) * Phasic NE"];
+    subgraph LCNEGadget["LCNE Gadget"]
+        %% LC-NE Gadget Processing
+        B --> |tanh| LC["LC Hidden State"];
 
-    Tonic --> Blend;
-    Suppression --> Blend;
-    Gate --> Blend["Blending: Tonic NE + Phasic NE"];
-    Blend --> NE_t["Final NE_t"];
+        %% Integrating Past LC Activations
+        subgraph MemoryIntegration["Past LC Integration"]
+            PrevLC["Previous LC_{t-1}"] -->|Adaptive Weighting| WeightedPast["Weighted Past LC"];
+            WeightedPast -->|Sigmoid| AddPast["LC_t + Weighted Past"];
+        end
+        LC --> AddPast;
+
+        %% Neuromodulation
+        AddPast -->|Tanh * Gain| Tonic["Tonic NE"];
+        AddPast -->|Tanh * Gain| Phasic["Phasic NE"];
+        Tonic --> NE_t
+        Phasic --> NE_t
+
+        %% Uncertainty Modulation
+        AddPast -->|Sigmoid| UncertaintyGate["Uncertainty Gate"];
+        UncertaintyGate -->|Scaling| NE_t["Final NE_t"];
+    end
     
-    %% Connection back to FF Gadget Controller
-    NE_t --> H["Concat with Hidden 2"];
-    C --> H;
+    %% FF Gadget Controller Integration
+    NE_t --> H["Skip Connect Hidden State"];
+    B --> H;
     
-    H --> Modulation["modulation_fc → Modulated Hidden (ReLU)"];
+    H -->|ReLU| Modulation["modulation_fc → Modulated Hidden"];
     Modulation --> Mean["Pupil_mean (Linear) → Pupil Dilation Prediction"];
     Modulation --> Var["Pupil_var (Exp(Linear)) → Pupil Dilation Uncertainty"];
 
-    Mean --> Output["Final Pupil Dilation Output"];
+    Mean --> Output["Final Pupil Dilation"];
     Var --> Output;

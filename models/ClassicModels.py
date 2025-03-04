@@ -17,20 +17,6 @@ class FeedForwardNN(nn.Module):
         if return_activations:
             return output, act1, act2
         return output
-
-class RecurrentNet(nn.Module): 
-    '''SImple RNN model for predicting pupil dilation'''
-    def __init__(self, input_size, hidden_size=32):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)  # batch_first=True ensures (batch, seq, feature)
-        self.fc = nn.Linear(hidden_size, 1)
-
-    def forward(self, x):
-        h0 = torch.zeros(1, x.size(0), self.hidden_size, device=x.device)
-        out, _ = self.rnn(x, h0)  # x shape: (batch_size, seq_length=1, input_size)
-        out = self.fc(out[:, -1, :])  # Take last timestep output
-        return out
     
 class LSTMModel(nn.Module):
     """Simple LSTM model for pupil dilation prediction with hidden state analysis"""

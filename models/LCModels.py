@@ -22,35 +22,6 @@ class UntrainedLCFCN(nn.Module):
         
         return LC_t, NE_t, C_t
 
-class UntrainedLCRNN(nn.Module):
-    '''Untrained RNN based LCNE model'''
-    def __init__(self, lambda_cortex, hidden_size=16):
-        super(UntrainedLCRNN, self).__init__()
-        self.lambda_cortex = lambda_cortex
-        self.hidden_size = hidden_size
-        
-        self.lc_rnn = nn.RNNCell(input_size=hidden_size, hidden_size=hidden_size)
-        self.cortex_rnn = nn.RNNCell(input_size=hidden_size, hidden_size=hidden_size)
-
-        self.lc_out = nn.Linear(hidden_size, 1)  # LC output
-        self.ne_out = nn.Linear(hidden_size, 1)  # NE output
-        self.cortex_out = nn.Linear(hidden_size, 1)  # Cortex output
-
-    def forward(self, x_t, stress_t, prev_LC_hidden, prev_Cortex_hidden):
-        x_t_exp = x_t.expand(1, self.hidden_size)  # Expand to (batch_size, hidden_size)
-        
-        LC_hidden = self.lc_rnn(x_t_exp, prev_LC_hidden)
-        
-        LC_t = torch.tanh(self.lc_out(LC_hidden))
-        NE_t = torch.sigmoid(self.ne_out(LC_hidden))
-
-        NE_exp = NE_t.expand(1, self.hidden_size)  # Ensure correct input size
-        Cortex_hidden = self.cortex_rnn(NE_exp, prev_Cortex_hidden)
-
-        C_t = self.cortex_out(Cortex_hidden) + self.lambda_cortex * NE_t
-
-        return LC_t, NE_t, C_t, LC_hidden, Cortex_hidden
-
 class LCNECortexFitterBasic(nn.Module):
     '''Basic LCNECortex model with learnable parameters'''
     def __init__(self, lambda_cortex=0.1):
@@ -83,7 +54,6 @@ class LCNECortexFitterBasic(nn.Module):
 
         return LC_t, NE_t, C_t, Pupil_t
     
-
 class LCNECortexFitter(nn.Module):
     """Improved LCNECortex model with learnable parameters and batch normalization"""
     def __init__(self, input_dim, hidden_dim=8, lambda_cortex=0.1):
@@ -126,7 +96,6 @@ class LCNECortexFitter(nn.Module):
         if return_activations:
             return LC_t, NE_t, C_t, Pupil_t, LC_raw, NE_raw, C_raw
         return LC_t, NE_t, C_t, Pupil_t
-
 
 class LCNECortexLSTM(nn.Module):
     """LCNECortex model with LSTM-style gating mechanisms for improved memory dynamics"""
