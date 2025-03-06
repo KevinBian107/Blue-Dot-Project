@@ -23,9 +23,9 @@ We can use this fitteed model to prompt them under certain `experimental` condit
 ## Preliminary Results & Analysis:
 We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created [model structure](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/results/model_graph.md) for showcase our pipeline.
 
-| FF Gadget Model Activation Persistent Homology Analysis | FF Gadget Model PCA Activation Network Graph|
-|--------------|--------------|
-| ![img](results/gadget_homology.png)| ![img](results/gadget_network.png)|
+| FF Gadget Model Activation Persistent Homology Analysis | FF Gadget Model PCA Activation Network Graph (Seperated) | FF Gadget Model PCA Activation Network Graph|
+|--------------|--------------|--------------|
+| ![img](results/gadget_homology.png)| ![img](results/gadget_network_1.png)| ![img](results/gadget_network_2.png)| 
 
 
 - **𝐻₀ (Blue Dots)** → Represents connected components (clusters in LC activation).
