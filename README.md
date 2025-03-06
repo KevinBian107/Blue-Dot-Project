@@ -21,7 +21,7 @@ We try to leverage neurosciecne behavior data related to pupil dilation & memory
 We can use this fitteed model to prompt them under certain `experimental` conditions and see hwo they would react to as compares to rea behavior data from animals or human (i.e. the two lick test for rodent).
 
 ## Preliminary Results & Analysis:
-We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created [model structure](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/results/model_graph.md) for showcase our pipeline.
+We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created a [neural gadget controller architecture](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/results/model_graph.md) diagram for showcase our model pipeline.
 
 | FF Gadget Model Activation Persistent Homology Analysis | FF Gadget Model PCA Activation Network Graph (Seperated) | FF Gadget Model PCA Activation Network Graph|
 |--------------|--------------|--------------|

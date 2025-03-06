@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from ripser import ripser
+from persim import wasserstein
 from persim import plot_diagrams
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -447,6 +448,54 @@ def extract_activations_gadget(model, X_tensor):
     }
 
     return activations_dict
+
+
+def compute_persistence_distance(activations_neutral, activations_stress):
+    """Computes Wasserstein distance between persistence diagrams."""
+    diagrams_neutral = ripser(activations_neutral)['dgms']
+    diagrams_stress = ripser(activations_stress)['dgms']
+
+    dist_h0 = wasserstein(diagrams_neutral[0], diagrams_stress[0])
+    dist_h1 = wasserstein(diagrams_neutral[1], diagrams_stress[1])
+
+    print(f"Wasserstein Distance (H0): {dist_h0:.4f}")
+    print(f"Wasserstein Distance (H1): {dist_h1:.4f}")
+    
+    return dist_h0, dist_h1
+
+
+def compute_persistence_distance_df(activations_dict):
+    """Computes Wasserstein distances between conditions for each shared key and stores them in a dataframe."""
+    results = []
+    
+    conditions = list(activations_dict.keys())
+    shared_keys = set(activations_dict[conditions[0]].keys())
+
+    for key in shared_keys:
+        for i in range(len(conditions)):
+            for j in range(i + 1, len(conditions)):
+                cond1, cond2 = conditions[i], conditions[j]
+                act1, act2 = activations_dict[cond1][key], activations_dict[cond2][key]
+
+                act1 = np.asarray(act1)
+                act2 = np.asarray(act2)
+
+                diagrams1 = ripser(act1)['dgms']
+                diagrams2 = ripser(act2)['dgms']
+
+                dist_h0 = wasserstein(diagrams1[0], diagrams2[0])
+                dist_h1 = wasserstein(diagrams1[1], diagrams2[1])
+
+                results.append({
+                    "Key": key,
+                    "Condition 1": cond1,
+                    "Condition 2": cond2,
+                    "Wasserstein H0": dist_h0,
+                    "Wasserstein H1": dist_h1
+                })
+    
+    df_results = pd.DataFrame(results)
+    return df_results
 
 
 def compute_persistent_homology(activation_data, title="Persistent Homology"):
