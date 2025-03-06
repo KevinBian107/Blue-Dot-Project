@@ -1,10 +1,10 @@
-# Blue Dot Project: A Data Driven "Controller"
+# Blue Dot Project: A Neural Gadget Controller
 Thi is a study into Locus Coeruleus Norepinephrine System and Security Motivation System rumination pathology pathway using computational methods. To this end, we are creating a Locus Coeruleus rumination system in which we call it as the **B**lue **D**ot (LC in greek means little blue dot) **P**roject (BDP).
 
 - [Meeting docs](https://docs.google.com/document/d/1740GxJ5xmIjUbWH8_RjYnuI5KNnZwGkvKQaM6hEzCLc/edit?tab=t.0#heading=h.e9mhf81r5r4b)
 - [Pitch presentation model proposition section (hosted in UCSD Podemos)](https://www.youtube.com/watch?v=KdRzyWItoa0)
 
-## Three Data Driven Models:
+## Neural Gadget Controller Models:
 We try to leverage neurosciecne behavior data related to pupil dilation & memory to build a data driven model. We want to fit and manipulate the model component to give us a platform to operate on and play around with it. We want to  achieve 3 goals:
 
 1. we want to use the the idea of building an **mechanistic model**:
