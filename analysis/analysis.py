@@ -2,30 +2,36 @@ import pandas as pd
 import numpy as np
 import torch
 
-from scipy.stats import pearsonr
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics.pairwise import cosine_similarity
 import umap
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 from ripser import ripser
 from persim import wasserstein
 from persim import plot_diagrams
 import matplotlib.pyplot as plt
 import networkx as nx
-from sklearn.neighbors import NearestNeighbors
-import networkx as nx
-from sklearn.metrics.pairwise import cosine_similarity
+
+from scipy.stats import permutation_test
+from scipy.stats import ks_2samp, mannwhitneyu
+from scipy.stats import pearsonr
+import scipy.stats as stats
 
 from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
+
+
+# ===========================================================================
+# Basic dimensionality reduction plots for different models
+# ===========================================================================
 
 def perform_pca_and_plot(activations, title, hue_labels):
     '''Do batch PCA plotting, helper graphing functions'''
@@ -427,6 +433,11 @@ def evaluate_ff_uncertainty_gadget(model, X_test, Y_test, scaler_Y):
     plt.show()
 
 
+# ===========================================================================
+# Topological analaysis helper functions
+# ===========================================================================
+
+
 def extract_activations_gadget(model, X_tensor):
     """Extract activations from the model."""
     model.eval()
@@ -498,36 +509,216 @@ def compute_persistence_distance_df(activations_dict):
     return df_results
 
 
+def wasserstein_permutation_test(act1, act2, n_permutations=1000):
+    """Runs a permutation test on Wasserstein distance between two persistence diagrams."""
+    
+    def wasserstein_stat(x, y):
+        return wasserstein(x.reshape(-1, 2), y.reshape(-1, 2))
+
+    # Compute persistence diagrams
+    diagrams1 = ripser(np.asarray(act1))['dgms']
+    diagrams2 = ripser(np.asarray(act2))['dgms']
+
+    def format_diagram(diag):
+        """Ensure persistence diagram is valid and remove inf values."""
+        diag = np.asarray(diag)
+        diag = diag[~np.isinf(diag).any(axis=1)]  # Remove rows with `inf`
+        if diag.ndim == 1 or len(diag) == 0:  # If it's 1D or empty
+            return np.zeros((1, 2))  # Placeholder
+        return diag
+
+    # Ensure diagrams are 2D and finite
+    diagrams1 = [format_diagram(d) for d in diagrams1]
+    diagrams2 = [format_diagram(d) for d in diagrams2]
+
+    # print("Filtered Diagrams1 Shapes:", [np.array(d).shape for d in diagrams1])
+    # print("Filtered Diagrams2 Shapes:", [np.array(d).shape for d in diagrams2])
+
+    # Compute Wasserstein distance
+    dist_h0 = wasserstein(diagrams1[0], diagrams2[0])
+    dist_h1 = wasserstein(diagrams1[1], diagrams2[1])
+
+    # Flatten diagrams for permutation test
+    flat_diag1_h0 = diagrams1[0].flatten()
+    flat_diag2_h0 = diagrams2[0].flatten()
+    flat_diag1_h1 = diagrams1[1].flatten()
+    flat_diag2_h1 = diagrams2[1].flatten()
+
+    # Run permutation test on **filtered, finite** data
+    result_h0 = permutation_test((flat_diag1_h0, flat_diag2_h0), wasserstein_stat, n_resamples=n_permutations)
+    result_h1 = permutation_test((flat_diag1_h1, flat_diag2_h1), wasserstein_stat, n_resamples=n_permutations)
+
+    return {
+        "Wasserstein H0": dist_h0, "p-value H0": result_h0.pvalue,
+        "Wasserstein H1": dist_h1, "p-value H1": result_h1.pvalue
+    }
+    
+
+def compute_persistence_hypothesis_test(activations_dict, n_permutations=1000, check_for=['NE']):
+    """Computes Wasserstein distances and runs a hypothesis test between conditions."""
+    results = []
+    
+    conditions = list(activations_dict.keys())
+    shared_keys = set(activations_dict[conditions[0]].keys())
+
+    for key in check_for:
+        for i in range(len(conditions)):
+            for j in range(i + 1, len(conditions)):
+                cond1, cond2 = conditions[i], conditions[j]
+                act1, act2 = activations_dict[cond1][key], activations_dict[cond2][key]
+
+                test_results = wasserstein_permutation_test(act1, act2, n_permutations=n_permutations)
+
+                results.append({
+                    "Key": key,
+                    "Condition 1": cond1,
+                    "Condition 2": cond2,
+                    "Wasserstein H0": test_results["Wasserstein H0"],
+                    "p-value H0": test_results["p-value H0"],
+                    "Wasserstein H1": test_results["Wasserstein H1"],
+                    "p-value H1": test_results["p-value H1"],
+                })
+    
+    df_results = pd.DataFrame(results)
+    return df_results
+
+
+def compute_persistence_lifetimes(diagram):
+    """Computes lifetimes (Death - Birth) for persistence features."""
+    return diagram[:, 1] - diagram[:, 0]
+
+
+def compare_persistence_lifetimes(diagrams1, diagrams2, condition1="Neutral", condition2="Stressful"):
+    """
+    Compares persistence lifetimes using Kolmogorov-Smirnov (KS) and t-test.
+    Assumes `diagrams1` and `diagrams2` are lists of persistence diagrams (e.g., [H0, H1]).
+    """
+    results = []
+    
+    for dim in range(len(diagrams1)):  # H0 and H1
+        lifetimes1 = compute_persistence_lifetimes(diagrams1[dim])
+        lifetimes2 = compute_persistence_lifetimes(diagrams2[dim])
+        
+        # remove infinite points if any exist
+        lifetimes1 = lifetimes1[np.isfinite(lifetimes1)]
+        lifetimes2 = lifetimes2[np.isfinite(lifetimes2)]
+        
+        # KS test
+        ks_stat, ks_pval = stats.ks_2samp(lifetimes1, lifetimes2)
+        
+        # t-test (Welch’s t-test for unequal variances)
+        t_stat, t_pval = stats.ttest_ind(lifetimes1, lifetimes2, equal_var=False)
+
+        results.append({
+            "Dimension": f"H{dim}",
+            "Condition 1": condition1,
+            "Condition 2": condition2,
+            "Mean Lifetime 1": np.mean(lifetimes1),
+            "Mean Lifetime 2": np.mean(lifetimes2),
+            "KS Stat": ks_stat,
+            "KS p-value": ks_pval,
+            "t-test Stat": t_stat,
+            "t-test p-value": t_pval,
+        })
+
+        plt.figure(figsize=(6, 4))
+        plt.hist(lifetimes1, bins=20, alpha=0.6, label=condition1, density=True)
+        plt.hist(lifetimes2, bins=20, alpha=0.6, label=condition2, density=True)
+        plt.xlabel("Persistence Lifetime")
+        plt.ylabel("Density")
+        plt.title(f"Persistence Lifetime Distribution ({condition1} vs. {condition2}) - H{dim}")
+        plt.legend()
+        plt.show()
+
+    df_results = pd.DataFrame(results)
+    return df_results
+
+
+def plot_birth_death_distributions(activations_dict, conditions=("Neutral", "Stressful"), activation_name='LC', homology_dim=0):
+    """
+    Plots the KDE of birth and death times for given conditions and homology dimension.
+    """
+
+    birth_times = {}
+    death_times = {}
+
+    for cond in conditions:
+        activations = np.asarray(activations_dict[cond][activation_name])
+        diagrams = ripser(activations)['dgms']
+
+        # extract birth and death values for the given homology dimension
+        births, deaths = diagrams[homology_dim][:, 0], diagrams[homology_dim][:, 1]
+
+        birth_times[cond] = births
+        death_times[cond] = deaths
+
+    # KDE for Birth Times
+    plt.figure(figsize=(8, 4))
+    for cond in conditions:
+        sns.kdeplot(birth_times[cond], label=f"{cond} - Birth", shade=True)
+    plt.xlabel("Birth Time")
+    plt.ylabel("Density")
+    plt.title(f"Birth Time Distributions (H{homology_dim})")
+    plt.legend()
+    plt.show()
+
+    # KDE for Death Times
+    plt.figure(figsize=(8, 4))
+    for cond in conditions:
+        sns.kdeplot(death_times[cond], label=f"{cond} - Death", shade=True)
+    plt.xlabel("Death Time")
+    plt.ylabel("Density")
+    plt.title(f"Death Time Distributions (H{homology_dim})")
+    plt.legend()
+    plt.show()
+
+
+def hypothesis_test_persistence_distributions(activations_dict, conditions=("Neutral", "Stressful"), activation_name='LC', homology_dim=0):
+    """
+    Performs statistical tests on birth and death time distributions between conditions.
+    """
+
+    birth_times = {}
+    death_times = {}
+
+    for cond in conditions:
+        activations = np.asarray(activations_dict[cond][activation_name])
+        diagrams = ripser(activations)['dgms']
+
+        births, deaths = diagrams[homology_dim][:, 0], diagrams[homology_dim][:, 1]
+
+        birth_times[cond] = births
+        death_times[cond] = deaths
+
+    results = []
+
+    def test_distributions(data1, data2, label):
+        ks_stat, ks_pval = ks_2samp(data1, data2)
+        mw_stat, mw_pval = mannwhitneyu(data1, data2, alternative="two-sided")
+
+        results.append({
+            "Metric": label,
+            "KS Test Stat": ks_stat, "KS p-value": ks_pval,
+            "MW Test Stat": mw_stat, "MW p-value": mw_pval
+        })
+
+    if len(birth_times[conditions[0]]) > 0 and len(birth_times[conditions[1]]) > 0:
+        test_distributions(birth_times[conditions[0]], birth_times[conditions[1]], f"Birth (H{homology_dim})")
+
+    if len(death_times[conditions[0]]) > 0 and len(death_times[conditions[1]]) > 0:
+        test_distributions(death_times[conditions[0]], death_times[conditions[1]], f"Death (H{homology_dim})")
+
+    print(f"\nHypothesis Test Results For Homology H{homology_dim}:")
+    for res in results:
+        print(f"{res['Metric']} → KS p={res['KS p-value']:.4f}, MW p={res['MW p-value']:.4f}")
+
+    return results
+
+
 def compute_persistent_homology(activation_data, title="Persistent Homology"):
     """Computes persistent homology and plots the persistence diagram."""
     diagrams = ripser(activation_data)['dgms']  # Compute persistence diagram
     plot_diagrams(diagrams, show=True)
-
-
-def compute_mapper_graph(activation_data, n_neighbors=10, title="Mapper Graph"):
-    """Computes and visualizes a Mapper graph using K-Nearest Neighbors (KNN)."""
-    
-    # reduce dimension for visualization
-    pca = PCA(n_components=2)
-    low_dim_data = pca.fit_transform(activation_data)
-
-    # compute KNN graph
-    knn = NearestNeighbors(n_neighbors=n_neighbors).fit(low_dim_data)
-    distances, indices = knn.kneighbors(low_dim_data)
-
-    # create graph
-    G = nx.Graph()
-    for i in range(len(low_dim_data)):
-        for j in indices[i]:
-            if i != j:
-                G.add_edge(i, j, weight=distances[i, np.where(indices[i] == j)[0][0]])
-
-    # Mapper graph
-    plt.figure(figsize=(7, 6))
-    nx.draw(G, pos={i: low_dim_data[i] for i in range(len(low_dim_data))}, node_size=30, edge_color='gray')
-    plt.title(title)
-    plt.show()
-
 
 
 def compute_persistent_homology_overlay(act_neutral, act_stress, title="Persistent Homology Overlay"):
@@ -563,6 +754,31 @@ def compute_persistent_homology_overlay(act_neutral, act_stress, title="Persiste
     plt.ylabel("Death")
     plt.title(title)
     plt.legend()
+    plt.show()
+    
+
+def compute_mapper_graph(activation_data, n_neighbors=10, title="Mapper Graph"):
+    """Computes and visualizes a Mapper graph using K-Nearest Neighbors (KNN)."""
+    
+    # reduce dimension for visualization
+    pca = PCA(n_components=2)
+    low_dim_data = pca.fit_transform(activation_data)
+
+    # compute KNN graph
+    knn = NearestNeighbors(n_neighbors=n_neighbors).fit(low_dim_data)
+    distances, indices = knn.kneighbors(low_dim_data)
+
+    # create graph
+    G = nx.Graph()
+    for i in range(len(low_dim_data)):
+        for j in indices[i]:
+            if i != j:
+                G.add_edge(i, j, weight=distances[i, np.where(indices[i] == j)[0][0]])
+
+    # Mapper graph
+    plt.figure(figsize=(7, 6))
+    nx.draw(G, pos={i: low_dim_data[i] for i in range(len(low_dim_data))}, node_size=30, edge_color='gray')
+    plt.title(title)
     plt.show()
 
 
@@ -651,19 +867,23 @@ def plot_activation_graph(G, title="Activation Graph"):
     plt.title(title)
     plt.show()
 
-    
+
+# ===========================================================================
+# Experimental Analysis
+# ===========================================================================
+
+
 def analyze_uncertainty_relationships(model, X_test):
     """
     Extracts LC-NE activations, pupil dilation predictions, and uncertainty.
     Then, analyzes how LC activation, tonic NE, and phasic NE correlate with uncertainty.
     """
 
-    # Step 1: Extract signals from the model
+    # extract signals from the model
     model.eval()
     with torch.no_grad():
         pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, _, _ = model(X_test, activation=True)
 
-    # Convert to NumPy for easier handling
     pupil_mean = pupil_mean.cpu().numpy()
     pupil_var = pupil_var.cpu().numpy()
     LC_t = LC_t.cpu().numpy()
@@ -671,7 +891,6 @@ def analyze_uncertainty_relationships(model, X_test):
     tonic_NE = tonic_NE.cpu().numpy()
     phasic_NE = phasic_NE.cpu().numpy()
 
-    # Step 2: Plot LC Activation vs. Uncertainty
     plt.figure(figsize=(8, 5))
     sns.scatterplot(x=LC_t.mean(axis=1), y=pupil_var.squeeze(), alpha=0.5)
     plt.xlabel("Mean LC Activation")
@@ -679,7 +898,7 @@ def analyze_uncertainty_relationships(model, X_test):
     plt.title("LC Activation vs. Predicted Uncertainty")
     plt.show()
 
-    # Step 3: Compare Tonic vs. Phasic NE with Uncertainty
+    # compare tonic vs. phasic NE with uncertainty
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
     sns.scatterplot(x=tonic_NE.mean(axis=1), y=pupil_var.squeeze(), alpha=0.5, ax=ax[0])
@@ -695,7 +914,6 @@ def analyze_uncertainty_relationships(model, X_test):
     plt.tight_layout()
     plt.show()
 
-    # Step 4: Compute Pearson correlations
     results = {
         "LC vs. Uncertainty": pearsonr(LC_t.mean(axis=1), pupil_var.squeeze())[0],
         "Tonic NE vs. Uncertainty": pearsonr(tonic_NE.mean(axis=1), pupil_var.squeeze())[0],

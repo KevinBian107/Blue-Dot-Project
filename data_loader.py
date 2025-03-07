@@ -99,13 +99,13 @@ def preprocess_data(df_behavior):
     return X, Y, X_tensor, Y_tensor, scaler_X, scaler_Y, df_clean
 
 
-def preprocess_data_stress(df_behavior, encoder=None, scaler_X=None, condition="AROUSING"):
+def preprocess_data_stress(df_behavior, encoder=None, scaler_X=None, condition="AROUSING", subject_id=None):
     '''Preprocess behavioral data for stress condition while keeping feature dimensions consistent.'''
     
     features = ['Condition', 'PreEvent_PupilMax', 'TrialEvent', 'onset', 'duration']
     target = ['Event_PupilDilation']
 
-    df_clean_all = df_behavior[features + target].dropna().reset_index(drop=True)
+    df_clean_all = df_behavior[features + target + ['subject']].dropna().reset_index(drop=True)
 
     encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
     encoder.fit(df_clean_all[['Condition', 'TrialEvent']])  # Fit on all conditions
@@ -113,6 +113,9 @@ def preprocess_data_stress(df_behavior, encoder=None, scaler_X=None, condition="
 
     scaler_X = StandardScaler()
     scaler_X.fit(df_clean_all[['PreEvent_PupilMax', 'onset', 'duration']])
+    
+    if subject_id is not None:
+        df_clean_all = df_clean_all[df_clean_all['subject'] == subject_id]
 
     # filter only stressful data (Ensures no feature dimension mismatch)
     if condition == "AROUSING":
@@ -135,13 +138,13 @@ def preprocess_data_stress(df_behavior, encoder=None, scaler_X=None, condition="
     return X_tensor
 
 
-def preprocess_data_duration(df_behavior, encoder=None, scaler_X=None, duration='short'):
+def preprocess_data_duration(df_behavior, encoder=None, scaler_X=None, duration='short', subject_id=None):
     '''Preprocess behavioral data for stress condition while keeping feature dimensions consistent.'''
     
     features = ['Condition', 'PreEvent_PupilMax', 'TrialEvent', 'onset', 'duration']
     target = ['Event_PupilDilation']
 
-    df_clean_all = df_behavior[features + target].dropna().reset_index(drop=True)
+    df_clean_all = df_behavior[features + target + ['subject']].dropna().reset_index(drop=True)
 
     encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
     encoder.fit(df_clean_all[['Condition', 'TrialEvent']])  # Fit on all conditions
@@ -149,6 +152,9 @@ def preprocess_data_duration(df_behavior, encoder=None, scaler_X=None, duration=
 
     scaler_X = StandardScaler()
     scaler_X.fit(df_clean_all[['PreEvent_PupilMax', 'onset', 'duration']])
+    
+    if subject_id is not None:
+        df_clean_all = df_clean_all[df_clean_all['subject'] == subject_id]
 
     # filter only stressful data (Ensures no feature dimension mismatch)
     if duration == 'short':

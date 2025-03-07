@@ -1,7 +1,6 @@
 # Blue Dot Project: A Neural Gadget Controller
 Thi is a study into Locus Coeruleus Norepinephrine System and Security Motivation System rumination pathology pathway using computational methods. To this end, we are creating a Locus Coeruleus rumination system in which we call it as the **B**lue **D**ot (LC in greek means little blue dot) **P**roject (BDP).
 
-- [Meeting docs](https://docs.google.com/document/d/1740GxJ5xmIjUbWH8_RjYnuI5KNnZwGkvKQaM6hEzCLc/edit?tab=t.0#heading=h.e9mhf81r5r4b)
 - [Pitch presentation model proposition section (hosted in UCSD Podemos)](https://www.youtube.com/watch?v=KdRzyWItoa0)
 
 ## Neural Gadget Controller Models:
@@ -23,9 +22,9 @@ We can use this fitteed model to prompt them under certain `experimental` condit
 ## Preliminary Results & Analysis:
 We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created a [neural gadget controller architecture](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/results/model_graph.md) diagram for showcase our model pipeline.
 
-| FF Gadget Model Activation Persistent Homology Analysis | FF Gadget Model PCA Activation Network Graph (Seperated) | FF Gadget Model PCA Activation Network Graph|
+| Activation Space Persistent Homology Analysis | PCA Activation Network Graph (Seperated) | Cosine Similarity Graph in Activation Space |
 |--------------|--------------|--------------|
-| ![img](results/gadget_homology.png)| ![img](results/gadget_network_1.png)| ![img](results/gadget_network_2.png)| 
+| ![img](results/gadget_homology.png)| ![img](results/gadget_network_1.png)| ![img](results/cosine_similarity.png)| 
 
 
 - **𝐻₀ (Blue Dots)** → Represents connected components (clusters in LC activation).
