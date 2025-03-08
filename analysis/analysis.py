@@ -25,8 +25,10 @@ from scipy.stats import permutation_test
 from scipy.stats import ks_2samp, mannwhitneyu
 from scipy.stats import pearsonr
 import scipy.stats as stats
+from scipy.stats import entropy
 
 from models.LCGadgetModels import FFGadgetController, FFGadgetUncertainController
+from statsmodels.tsa.stattools import acf, pacf
 
 
 # ===========================================================================
@@ -866,6 +868,43 @@ def plot_activation_graph(G, title="Activation Graph"):
     nx.draw(G, pos, with_labels=False, node_size=50, edge_color="gray", alpha=0.7)
     plt.title(title)
     plt.show()
+    
+
+def compute_betti_curves(activations_dict, homology_dim=1,  activation_name='LC'):
+    """Computes Betti curves for different conditions."""
+    plt.figure(figsize=(7, 5))
+
+    for cond, activations in activations_dict.items():
+        diagrams = ripser(np.asarray(activations[activation_name]))["dgms"]
+        birth_times = diagrams[homology_dim][:, 0]
+        death_times = diagrams[homology_dim][:, 1]
+
+        bins = np.linspace(min(birth_times), max(death_times), 50)
+        betti_counts = np.array([(birth_times < t).sum() - (death_times < t).sum() for t in bins])
+        plt.plot(bins, betti_counts, label=f"{cond} (H{homology_dim})")
+
+    plt.xlabel("Filtration Value")
+    plt.ylabel("Betti Number Count")
+    plt.title(f"Betti Curves (H{homology_dim})")
+    plt.legend()
+    plt.show()
+    
+
+def compute_topological_silhouette(activations_dict,homology_dim=1, activation_name='LC'):
+    """Computes topological silhouette across conditions."""
+    plt.figure(figsize=(7, 5))
+    
+    for cond, activations in activations_dict.items():
+        diagrams = ripser(np.asarray(activations[activation_name]))["dgms"]
+        lifetimes = diagrams[homology_dim][:, 1] - diagrams[homology_dim][:, 0]
+        weights = lifetimes / np.sum(lifetimes)
+        plt.plot(diagrams[homology_dim][:, 0], weights, label=f"{cond} (H{homology_dim})", alpha=0.7)
+    
+    plt.xlabel("Birth")
+    plt.ylabel("Persistence Weight")
+    plt.title(f"Topological Silhouette (H{homology_dim})")
+    plt.legend()
+    plt.show()
 
 
 # ===========================================================================
@@ -935,3 +974,53 @@ def simulate_lc_activation(model, X_test, lc_boost=1.0):
         pupil_low, var_low = model(X_test - lc_boost)  # Low LC activation
 
     return pupil_high.cpu().numpy(), var_high.cpu().numpy(), pupil_low.cpu().numpy(), var_low.cpu().numpy()
+
+
+def compute_autocorrelation(activations_dict, conditions=("Neutral", "Stressful"), activation_name='LC', lags=20):
+    """
+    Computes auto-correlation and partial auto-correlation for activations.
+    """
+    plt.figure(figsize=(12, 5))
+    
+    for i, cond in enumerate(conditions):
+        activations = np.asarray(activations_dict[cond][activation_name]).mean(axis=1)
+        
+        acf_vals = acf(activations, nlags=lags)
+        pacf_vals = pacf(activations, nlags=lags)
+        
+        plt.subplot(1, 2, 1)
+        plt.plot(acf_vals, label=cond)
+        plt.xlabel("Lag")
+        plt.ylabel("ACF")
+        plt.title("Auto-Correlation Function")
+        plt.legend()
+
+        plt.subplot(1, 2, 2)
+        plt.plot(pacf_vals, label=cond)
+        plt.xlabel("Lag")
+        plt.ylabel("PACF")
+        plt.title("Partial Auto-Correlation Function")
+        plt.legend()
+
+    plt.show()
+
+def compute_activation_entropy(activations_dict, conditions=("Neutral", "Stressful"), activation_name='LC'):
+    """
+    Computes entropy and KL-Divergence between activation distributions.
+    """
+    distributions = {}
+    for cond in conditions:
+        activations = np.asarray(activations_dict[cond][activation_name]).flatten()
+        hist, bins = np.histogram(activations, bins=30, density=True)
+        distributions[cond] = hist
+
+    entropy_vals = {cond: entropy(distributions[cond]) for cond in conditions}
+    kl_div = entropy(distributions[conditions[0]], distributions[conditions[1]])
+
+    print("\nEntropy & Divergence Results:")
+    for cond, ent in entropy_vals.items():
+        print(f"{cond} Entropy: {ent:.4f}")
+
+    print(f"KL-Divergence ({conditions[0]} → {conditions[1]}): {kl_div:.4f}")
+
+    return entropy_vals, kl_div
