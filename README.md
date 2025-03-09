@@ -17,7 +17,7 @@ We can use this fitteed model to prompt them under certain `experimental` condit
 - [Pitch presentation model proposition section (hosted in UCSD Podemos)](https://www.youtube.com/watch?v=KdRzyWItoa0)
 
 ## Preliminary Results & Analysis:
-We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created a [neural gadget controller architecture](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/results/model_graph.md) diagram for showcase our model pipeline.
+We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created a [neural gadget controller architecture](results/model_graph.md) diagram for showcase our model pipeline. A detailed [mathamatical notation description of the model](results/ngc_notation.png) is also provided.
 
 | Activation Space Persistent Homology Analysis | PCA Activation Network Graph (Seperated) | Cosine Similarity Graph in Activation Space |
 |--------------|--------------|--------------|
