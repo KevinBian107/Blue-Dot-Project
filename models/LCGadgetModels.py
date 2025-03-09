@@ -48,63 +48,6 @@ class LCNEGadget(nn.Module):
 
         return LC_t, NE_t, tonic_NE, phasic_NE
 
-class LCNEGadgetCompositional(nn.Module):
-    """LC-NE system that integrates past activations implicitly for adaptive modulation."""
-    
-    def __init__(self, hidden_dim):
-        super(LCNEGadgetCompositional, self).__init__()
-        self.hidden_dim = hidden_dim
-
-        # LC transformation layers for hierarchical processing
-        self.W_LC1 = nn.Linear(hidden_dim, hidden_dim)
-        self.W_LC2 = nn.Linear(hidden_dim, hidden_dim)
-
-        self.tonic_control = nn.Linear(hidden_dim, hidden_dim)
-        self.phasic_control = nn.Linear(hidden_dim, hidden_dim)
-
-        # adaptive weighting for historical LC activations
-        self.adaptive_weight = nn.Linear(hidden_dim, hidden_dim)  
-
-        # dynamic uncertainty regulation
-        self.uncertainty_gate = nn.Linear(hidden_dim, hidden_dim)
-
-        self.norm = nn.LayerNorm(hidden_dim)
-        self.tanh = nn.Tanh()
-        self.sigmoid = nn.Sigmoid()
-
-        # store past LC states
-        self.prev_LC = None  
-
-    def forward(self, hidden_state):
-        """Processes LC activations dynamically, integrating past activations while handling batch size changes."""
-        
-        LC_t = self.tanh(self.W_LC1(hidden_state))
-        LC_t = self.tanh(self.W_LC2(LC_t))
-
-        if self.prev_LC is not None:
-            
-            if self.prev_LC.shape[0] != LC_t.shape[0]:
-                print(f"Adjusting prev_LC size: {self.prev_LC.shape} -> {LC_t.shape}")
-                self.prev_LC = LC_t.detach().clone() 
-            
-            weighted_past = self.sigmoid(self.adaptive_weight(self.prev_LC)) * self.prev_LC
-            LC_t = LC_t + weighted_past 
-        
-        self.prev_LC = LC_t.detach().clone()
-
-        # neuromodulatory signals
-        tonic_NE = self.tanh(self.tonic_control(LC_t))  
-        phasic_NE = self.tanh(self.phasic_control(LC_t))  
-
-        # adaptive uncertainty gating
-        uncertainty_weight = self.sigmoid(self.uncertainty_gate(LC_t))
-        NE_t = (1 - uncertainty_weight) * tonic_NE + uncertainty_weight * phasic_NE
-
-        NE_t = self.norm(NE_t)  
-
-        return LC_t, NE_t, tonic_NE, phasic_NE
-
-
 class FFGadgetController(nn.Module):
     """FF network learns to control LC-NE system for modulation"""
     
@@ -138,6 +81,66 @@ class FFGadgetController(nn.Module):
 
         return output, LC_t, NE_t, tonic_NE, phasic_NE
 
+
+class LCNEGadgetCompositional(nn.Module):
+    """LC-NE system that integrates past activations implicitly for adaptive modulation.
+    Incoportaes self-regulation of the gadget through damping and amplifying the effect"""
+    
+    def __init__(self, hidden_dim):
+        super(LCNEGadgetCompositional, self).__init__()
+        self.hidden_dim = hidden_dim
+
+        # LC transformation layers for hierarchical processing
+        self.W_LC1 = nn.Linear(hidden_dim, hidden_dim)
+        self.W_LC2 = nn.Linear(hidden_dim, hidden_dim)
+
+        self.tonic_control = nn.Linear(hidden_dim, hidden_dim)
+        self.phasic_control = nn.Linear(hidden_dim, hidden_dim)
+
+        # adaptive weighting for historical LC activations
+        self.adaptive_weight = nn.Linear(hidden_dim, hidden_dim)  
+
+        # dynamic uncertainty regulation
+        self.uncertainty_gate = nn.Linear(hidden_dim, hidden_dim)
+
+        self.norm = nn.LayerNorm(hidden_dim)
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+
+        # store past LC states
+        self.prev_LC = None  
+
+    def forward(self, hidden_state):
+        """Processes LC activations dynamically, integrating past activations while handling batch size changes."""
+        
+        # Tanh is Centered Around Zero → Balanced Excitation/Inhibition
+        LC_t = self.tanh(self.W_LC1(hidden_state))
+        LC_t = self.tanh(self.W_LC2(LC_t))
+
+        if self.prev_LC is not None:
+            
+            if self.prev_LC.shape[0] != LC_t.shape[0]:
+                print(f"Adjusting prev_LC size: {self.prev_LC.shape} -> {LC_t.shape}")
+                self.prev_LC = LC_t.detach().clone() 
+            
+            weighted_past = self.sigmoid(self.adaptive_weight(self.prev_LC)) * self.prev_LC
+            LC_t = LC_t + weighted_past 
+        
+        self.prev_LC = LC_t.detach().clone()
+
+        # neuromodulatory signals
+        tonic_NE = self.tanh(self.tonic_control(LC_t))  
+        phasic_NE = self.tanh(self.phasic_control(LC_t))  
+
+        # adaptive uncertainty gating
+        uncertainty_weight = self.sigmoid(self.uncertainty_gate(LC_t))
+        NE_t = (1 - uncertainty_weight) * tonic_NE + uncertainty_weight * phasic_NE
+
+        NE_t = self.norm(NE_t)  
+
+        return LC_t, NE_t, tonic_NE, phasic_NE
+
+
 class FFGadgetUncertainController(nn.Module):
     """FF network learns to control LC-NE system for pupil dilation + uncertainty."""
     
@@ -163,7 +166,7 @@ class FFGadgetUncertainController(nn.Module):
         hidden_1 = torch.relu(self.fc1(x))
         hidden_2 = torch.relu(self.fc2(hidden_1))
 
-        # neuromodulatory signals
+        # neuromodulatory signals controled by the nerual network, a self-regulating gadget that it need to learn to play with
         LC_t, NE_t, tonic_NE, phasic_NE = self.lcne_gadget(hidden_2)
 
         # FFN Learns How to Use Neuromodulation
