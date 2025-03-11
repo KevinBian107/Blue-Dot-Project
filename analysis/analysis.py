@@ -912,6 +912,44 @@ def compute_topological_silhouette(activations_dict,homology_dim=1, activation_n
 # ===========================================================================
 
 
+def analyze_uncertainty_relationships_heatmap(model, X_test):
+    """
+    Extracts LC-NE activations, pupil dilation predictions, and uncertainty.
+    Then, analyzes how LC activation, tonic NE, and phasic NE correlate with uncertainty.
+    Also visualizes the relationship in a heatmap-style scatterplot.
+    """
+
+    # Extract model outputs
+    model.eval()
+    with torch.no_grad():
+        pupil_mean, pupil_var, LC_t, NE_t, tonic_NE, phasic_NE, _, _ = model(X_test, activation=True)
+
+    # Convert tensors to numpy
+    pupil_mean = pupil_mean.cpu().numpy()
+    pupil_var = pupil_var.cpu().numpy().squeeze()  # Uncertainty (pupil variance)
+    LC_t = LC_t.cpu().numpy().mean(axis=1)  # Mean LC activation
+    NE_t = NE_t.cpu().numpy().mean(axis=1)  # Mean NE activation
+    tonic_NE = tonic_NE.cpu().numpy().mean(axis=1)  # Tonic NE activation
+    phasic_NE = phasic_NE.cpu().numpy().mean(axis=1)  # Phasic NE activation
+    
+    # Create heatmap-style scatterplot
+    plt.figure(figsize=(8, 6))
+    scatter = plt.scatter(
+        LC_t, pupil_mean, c=pupil_var, cmap='viridis', alpha=0.7
+    )
+    plt.colorbar(scatter, label="Predicted Uncertainty (Pupil Variance)")
+    
+    # Centering axes
+    plt.xlim(LC_t.min() - 0.01, LC_t.max() + 0.01)
+    plt.ylim(pupil_mean.min() - 0.01, pupil_mean.max() + 0.01)
+
+    plt.xlabel("Mean LC Activation")
+    plt.ylabel("Mean Pupil Dilation")
+    plt.title("Uncertainty vs. Activation")
+    plt.show()
+
+
+
 def analyze_uncertainty_relationships(model, X_test):
     """
     Extracts LC-NE activations, pupil dilation predictions, and uncertainty.
@@ -960,7 +998,7 @@ def analyze_uncertainty_relationships(model, X_test):
         "NE vs. Uncertainty": pearsonr(NE_t.mean(axis=1), pupil_var.squeeze())[0],
     }
     
-    print("\n📊 **Correlation Results:**")
+    print("\nCorrelation Results:")
     for key, value in results.items():
         print(f"{key}: {value:.4f}")
 
