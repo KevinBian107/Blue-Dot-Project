@@ -1,4 +1,9 @@
+Check out our [Blue-Dot Project (NGC) Presentation at UCSD Podemos, Winter 2025](https://www.youtube.com/watch?v=hv0DtRo7GoQ)
+
 # Blue Dot Project: A Neural Gadget Controller
+
+> ***"We beleive that thoughts are internal actions and we  can map these actions"***
+
 We study into Locus Coeruleus (Blue Dot) Norepinephrine System and its potential links to rumination using a computational methods. We try to leverage thepower of neural network to build an **neural gadget controller**, inspired by the *Neural Turing Machine*, and fit to an neurosciecne behavioral dataset related to pupil dilation & memory. There are 3 key points to this project:
 
 1. we want to use the the idea of building an **mechanistic model**:
@@ -13,8 +18,6 @@ We study into Locus Coeruleus (Blue Dot) Norepinephrine System and its potential
     - Examine uncertainty changes in decision.
 
 We can use this fitteed model to prompt them under certain `experimental` conditions and see hwo they would react to as compares to rea behavior data from animals or human (i.e. the two lick test for rodent).
-
-- [Pitch presentation model proposition section (hosted in UCSD Podemos)](https://www.youtube.com/watch?v=KdRzyWItoa0)
 
 ## Preliminary Results & Analysis:
 We provide an [sample notebook](https://github.com/KevinBian107/Blue-Dot-Project/blob/main/simulate.ipynb) for demostration purposes. Now  we have a sand-box that has been setup  to implement all kinds of cool neuroscience ideas that we can do. We have also created a [neural gadget controller architecture](results/model_graph.md) diagram for showcase our model pipeline. A detailed [mathamatical notation description of the model](results/ngc_notation.png) is also provided.

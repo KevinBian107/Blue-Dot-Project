@@ -905,6 +905,55 @@ def compute_topological_silhouette(activations_dict,homology_dim=1, activation_n
     plt.title(f"Topological Silhouette (H{homology_dim})")
     plt.legend()
     plt.show()
+    
+
+def time_delay_embedding_multidim(data, delay=5, dimension=3):
+    """Performs time-delay embedding on multi-dimensional signals.
+    
+    dimension is window sizedelay is skips
+    """
+    N, D = data.shape
+    new_N = N - delay * (dimension - 1)
+
+    # stack delayed versions for each feature separately
+    embedded_data = np.hstack([data[i: new_N + i] for i in range(0, delay * dimension, delay)])
+
+    return embedded_data
+
+
+def compute_persistent_homology_overlay_with_delay(act_neutral, act_stress, delay=5, dimension=3, title="Persistent Homology Overlay (Time-Delay)"):
+    """Computes and overlays persistent homology for neutral vs. stressful activations after applying time-delay embedding."""
+    
+    embedded_neutral = time_delay_embedding_multidim(np.asarray(act_neutral), delay=delay, dimension=dimension)
+    embedded_stress = time_delay_embedding_multidim(np.asarray(act_stress), delay=delay, dimension=dimension)
+
+    diagrams_neutral = ripser(embedded_neutral)['dgms']
+    diagrams_stress = ripser(embedded_stress)['dgms']
+
+    homology_styles = {
+        0: {"color": "blue", "marker": "o", "label": r"$H_0$ (Neutral)", "label_stress": r"$H_0$ (Stressful)"},
+        1: {"color": "pink", "marker": "s", "label": r"$H_1$ (Neutral)", "label_stress": r"$H_1$ (Stressful)"},
+    }
+
+    plt.figure(figsize=(6, 6))
+
+    for dim in range(len(diagrams_neutral)):
+        if dim in homology_styles:
+            style = homology_styles[dim]
+            if len(diagrams_neutral[dim]) > 0:
+                plt.scatter(diagrams_neutral[dim][:, 0], diagrams_neutral[dim][:, 1], 
+                            c=style["color"], marker=style["marker"], label=style["label"], alpha=0.6)
+            if len(diagrams_stress[dim]) > 0:
+                plt.scatter(diagrams_stress[dim][:, 0], diagrams_stress[dim][:, 1], 
+                            c=style["color"], marker=style["marker"], edgecolors="black", label=style["label_stress"], alpha=0.6)
+
+    plt.plot([0, 2], [0, 2], "k--", alpha=0.5)  
+
+    plt.xlabel("Birth")
+    plt.ylabel("Death")
+    plt.title(title)
+    plt.legend()
+    plt.show()
 
 
 # ===========================================================================
