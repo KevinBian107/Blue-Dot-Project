@@ -1,4 +1,4 @@
-Check out our [Blue-Dot Project (NGC) Presentation at UCSD Podemos, Winter 2025](https://www.youtube.com/watch?v=hv0DtRo7GoQ)
+Check out our [Blue-Dot Project (NGC) Presentation at UCSD Podemos, Winter 2025](https://www.youtube.com/watch?v=quY3_9gBAys)
 
 # Blue Dot Project: A Neural Gadget Controller
 
